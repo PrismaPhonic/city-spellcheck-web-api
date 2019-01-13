@@ -16,11 +16,11 @@ pub struct CityData {
     pub longitudes: Vec<f32>,
 }
 
-// #[derive(Debug)]
-// pub enum Country {
-//     US = "US",
-//     CA = "CA",
-// }
+#[derive(Debug, Copy, Clone)]
+pub enum Country {
+    US,
+    CA,
+}
 
 #[derive(Debug)]
 pub struct City<'a> {
