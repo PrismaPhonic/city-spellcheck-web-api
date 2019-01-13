@@ -4,6 +4,7 @@
 */
 use std::error::Error;
 use std::fs::File;
+use std::fs;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader, Write};
 
@@ -31,13 +32,6 @@ pub struct City<'a> {
     longitude: f32,
 }
 
-pub fn run() -> Result<(), Box<dyn Error>> {
-    let mut cities = CityData::new();
-    cities.populate_from_file("lol")?;
-    
-    Ok(())
-}
-
 impl CityData {
     fn new() -> Self {
         CityData {
@@ -50,12 +44,7 @@ impl CityData {
     }
 
     fn populate_from_file(&mut self, filename: &str) -> Result<(), Box<dyn Error>> {
-        let mut file = File::open(filename)?;
-
-        let mut buffer = String::new();
-
-        file.read_to_string(&mut buffer)?;
-
+        let buffer = fs::read_to_string(filename)?;
         let mut lines = buffer.lines();
 
         // skip header line
@@ -63,27 +52,20 @@ impl CityData {
 
         for line in lines {
             println!("{}", line);
-            let splits: Vec<&str> = line.split(',').collect();
-            let name = splits[0];
-            let country = splits[1];
-            let region = splits[2];
-            let latitude: f32 = splits[3].parse()?;
-            let longitude: f32 = splits[4].parse()?;
+            if let [name, country, region, latitude, longitude] =
+                line.split(',').collect::<Vec<&str>>()[..]
+            {
+                let latitude: f32 = latitude.parse()?;
+                let longitude: f32 = longitude.parse()?;
 
-            self.add_city(name, country, region, latitude, longitude);
+                self.add_city(name, country, region, latitude, longitude);
+            };
         }
 
         Ok(())
     }
 
-    fn add_city(
-        &mut self,
-        name: &str,
-        country: &str,
-        region: &str,
-        latitude: f32,
-        longitude: f32,
-    ) {
+    fn add_city(&mut self, name: &str, country: &str, region: &str, latitude: f32, longitude: f32) {
         self.names.push(name.to_string());
         self.countries.push(country.to_string());
         self.regions.push(region.to_string());
