@@ -51,7 +51,6 @@ impl CityData {
         lines.next();
 
         for line in lines {
-            println!("{}", line);
             if let [name, country, region, latitude, longitude] =
                 line.split(',').collect::<Vec<&str>>()[..]
             {
