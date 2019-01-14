@@ -1,8 +1,11 @@
-extern crate rayon;
 /**
  * TODOS:
  * 1. Add enum for Region - states and provinces
 */
+extern crate rayon;
+extern crate distance;
+
+#[macro_use] extern crate serde_derive;
 
 use std::error::Error;
 use std::fs;
@@ -11,8 +14,7 @@ use std::io::prelude::*;
 use std::io::{BufRead, BufReader, Write};
 
 use rayon::prelude::*;
-use rff::match_and_score;
-use rff::scorer;
+use distance::*;
 
 /// Data-Oriented Design approach
 /// Struct of Arrays (SoA)
@@ -40,7 +42,7 @@ pub struct City<'a> {
     longitude: f32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FuzzyResult {
     city: String,
     latitude: f32,
@@ -68,7 +70,7 @@ impl FuzzyResult {
 }
 
 impl CityData {
-    fn new() -> Self {
+    pub fn new() -> Self {
         CityData {
             names: Vec::new(),
             countries: Vec::new(),
@@ -78,7 +80,7 @@ impl CityData {
         }
     }
 
-    fn populate_from_file(&mut self, filename: &str) -> Result<(), Box<dyn Error>> {
+    pub fn populate_from_file(&mut self, filename: &str) -> Result<(), Box<dyn Error>> {
         let buffer = fs::read_to_string(filename)?;
         let mut lines = buffer.lines();
 
@@ -117,23 +119,21 @@ impl CityData {
         }
     }
 
-    fn search(&self, term: &str) -> Vec<FuzzyResult> {
+    pub fn search(&self, term: &str) -> Vec<FuzzyResult> {
         let mut results = vec![];
 
-        let found: Vec<usize> = self
+        let found: Vec<(usize, f32)> = self
             .names
             .par_iter()
             .enumerate()
-            // .map(|(i, city)| (i, scorer::score(term, city)))
-            // .filter(|(_, score)| score < &0.5 && score > &0.01)
-            .filter(|(i, city)| city.contains(term))
-            .map(|(i, _)| i)
+            .map(|(i, city)| (i, sift3(city, term)))
+            .filter(|(_, score)| score < &1.4)
             .collect();
 
-        for city_idx in found {
-            // let (i, score) = result;
-            let city = self.get_city(city_idx);
-            let fr_instance = FuzzyResult::new(city, 0.0);
+        for result in found {
+            let (i, score) = result;
+            let city = self.get_city(i);
+            let fr_instance = FuzzyResult::new(city, score);
             results.push(fr_instance);
         }
 
@@ -171,7 +171,7 @@ mod tests {
         let mut cities = CityData::new();
         cities.populate_from_file("data/cities_canada-usa-filtered.csv");
         let results = cities.search("London");
-        assert_eq!(format!("{:?}", results), "City { name: \"Abbotsford\", country: \"CA\", region: \"02\", latitude: 49.05798, longitude: -122.25257 }");
+        assert_eq!(format!("{:?}", results), "[FuzzyResult { city: \"London, 08, CA\", latitude: 42.98339, longitude: -81.23304, score: 0.0 }, FuzzyResult { city: \"London, KY, US\", latitude: 37.12898, longitude: -84.08326, score: 0.0 }, FuzzyResult { city: \"London, OH, US\", latitude: 39.88645, longitude: -83.44825, score: 0.0 }]");
     }
 
 }
