@@ -1,13 +1,21 @@
+extern crate rayon;
 /**
  * TODOS:
  * 1. Add enum for Region - states and provinces
 */
+
 use std::error::Error;
-use std::fs::File;
 use std::fs;
+use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader, Write};
 
+use rayon::prelude::*;
+use rff::match_and_score;
+use rff::scorer;
+
+/// Data-Oriented Design approach
+/// Struct of Arrays (SoA)
 #[derive(Debug)]
 pub struct CityData {
     pub names: Vec<String>,
@@ -30,6 +38,33 @@ pub struct City<'a> {
     region: &'a str,
     latitude: f32,
     longitude: f32,
+}
+
+#[derive(Debug)]
+pub struct FuzzyResult {
+    city: String,
+    latitude: f32,
+    longitude: f32,
+    score: f32,
+}
+
+impl FuzzyResult {
+    fn new(city_data: City, score: f32) -> FuzzyResult {
+        let City {
+            name,
+            country,
+            region,
+            latitude,
+            longitude,
+        } = city_data;
+        let city = format!("{}, {}, {}", name, region, country);
+        FuzzyResult {
+            city,
+            latitude,
+            longitude,
+            score,
+        }
+    }
 }
 
 impl CityData {
@@ -81,6 +116,29 @@ impl CityData {
             longitude: self.longitudes[idx],
         }
     }
+
+    fn search(&self, term: &str) -> Vec<FuzzyResult> {
+        let mut results = vec![];
+
+        let found: Vec<usize> = self
+            .names
+            .par_iter()
+            .enumerate()
+            // .map(|(i, city)| (i, scorer::score(term, city)))
+            // .filter(|(_, score)| score < &0.5 && score > &0.01)
+            .filter(|(i, city)| city.contains(term))
+            .map(|(i, _)| i)
+            .collect();
+
+        for city_idx in found {
+            // let (i, score) = result;
+            let city = self.get_city(city_idx);
+            let fr_instance = FuzzyResult::new(city, 0.0);
+            results.push(fr_instance);
+        }
+
+        results
+    }
 }
 
 #[cfg(test)]
@@ -107,4 +165,13 @@ mod tests {
         cities.populate_from_file("data/cities_canada-usa-filtered.csv");
         assert_eq!(format!("{:?}", cities.get_city(0)), "City { name: \"Abbotsford\", country: \"CA\", region: \"02\", latitude: 49.05798, longitude: -122.25257 }");
     }
+
+    #[test]
+    fn test_search() {
+        let mut cities = CityData::new();
+        cities.populate_from_file("data/cities_canada-usa-filtered.csv");
+        let results = cities.search("London");
+        assert_eq!(format!("{:?}", results), "City { name: \"Abbotsford\", country: \"CA\", region: \"02\", latitude: 49.05798, longitude: -122.25257 }");
+    }
+
 }

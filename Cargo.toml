@@ -5,3 +5,6 @@ authors = ["Peter Farr <Peter@PrismaPhonic.com>"]
 edition = "2018"
 
 [dependencies]
+sublime_fuzzy = "0.6.0"
+rff = "0.3.0"
+rayon = "1.0.3"
