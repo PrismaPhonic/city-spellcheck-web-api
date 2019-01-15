@@ -2,19 +2,34 @@
 
 #[macro_use]
 extern crate rocket;
+
 #[macro_use]
 extern crate rocket_contrib;
+
+#[macro_use]
+extern crate lazy_static;
 
 use city_spellcheck::*;
 use rocket::http::RawStr;
 use rocket_contrib::json::{Json, JsonValue};
 
+lazy_static! {
+    static ref CITIES: CityData = {
+        let mut cities = CityData::new();
+        cities
+            .populate_from_file("data/cities_canada-usa-filtered.csv")
+            .unwrap();
+        cities
+    };
+}
+
+
 #[get("/suggestions?<q>&<latitude>&<longitude>")]
 fn suggestions(q: &RawStr, latitude: Option<f32>, longitude: Option<f32>) -> JsonValue {
-    let mut cities = CityData::new();
-    cities
-        .populate_from_file("data/cities_canada-usa-filtered.csv")
-        .unwrap();
+    // let mut cities = CityData::new();
+    // cities
+    //     .populate_from_file("data/cities_canada-usa-filtered.csv")
+    //     .unwrap();
     
     let mut coords = None;
 
@@ -25,7 +40,7 @@ fn suggestions(q: &RawStr, latitude: Option<f32>, longitude: Option<f32>) -> Jso
             return json!("If you supply latitude you must also supply longitude")
         }
     }
-    let results = cities.search(q, coords);
+    let results = CITIES.search(q, coords);
     json!(results)
 }
 

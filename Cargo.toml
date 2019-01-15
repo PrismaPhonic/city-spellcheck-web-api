@@ -11,6 +11,7 @@ rocket = "0.4.0"
 serde_derive = "1.0.84"
 serde = "1.0.84"
 sublime_fuzzy = "0.6.0"
+lazy_static = "1.2.0"
 
 [dependencies.rocket_contrib]
 version = "0.4.0"
