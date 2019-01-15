@@ -5,6 +5,8 @@
 extern crate rayon;
 extern crate distance;
 
+extern crate sublime_fuzzy;
+
 #[macro_use] extern crate serde_derive;
 
 use std::error::Error;
@@ -15,6 +17,8 @@ use std::io::{BufRead, BufReader, Write};
 
 use rayon::prelude::*;
 use distance::*;
+
+use sublime_fuzzy::*;
 
 /// Data-Oriented Design approach
 /// Struct of Arrays (SoA)
@@ -38,6 +42,12 @@ pub struct City<'a> {
     name: &'a str,
     country: &'a str,
     region: &'a str,
+    latitude: f32,
+    longitude: f32,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Coordinate {
     latitude: f32,
     longitude: f32,
 }
@@ -119,14 +129,48 @@ impl CityData {
         }
     }
 
-    pub fn search(&self, term: &str) -> Vec<FuzzyResult> {
+    /// `total_score` takes into account location as well as 
+    /// string distance using Levenshtein algorithm
+    fn total_score(&self, term: &str, idx: usize, loc: Option<Coordinate>) -> f32 {
+        let city = self.names[idx];
+        let str_dist = damerau_levenshtein(&city, term);
+
+        
+        
+    }
+
+    /// Finds circular distance from two gps coordinates using haversine formula
+    fn find_distance_earth(loc1: Coordinate, loc2: Coordinate) -> f32 {
+        let R: f32 = 6372.8;
+        let Coordinate { latitude: lat1, longitude: long1 } = loc1;
+        let Coordinate { latitude: lat2, longitude: long2 } = loc2;
+        long1 -= long2;
+        long1 = long1.to_radians();
+        lat1 = lat1.to_radians();
+        lat2 = lat2.to_radians();
+        let dz: f32 = lat1.sin() - lat2.sin();
+        let dx: f32 = long1.cos() * lat1.cos() - lat2.cos();
+        let dy: f32 = long1.sin() * lat1.cos();
+        ((dx * dx + dy * dy + dz * dz).sqrt() / 2.0).asin() * 2.0 * R
+    }
+
+    fn dist_score(dist: f32) -> f32 {
+        match dist {
+            1..100 => 0,
+            _ => dist * 
+        }
+    }
+
+    pub fn search(&self, term: &str, loc: Option<Coordinate>) -> Vec<FuzzyResult> {
         let mut results = vec![];
 
+        let location = loc.clone();
         let found: Vec<(usize, f32)> = self
             .names
             .par_iter()
             .enumerate()
-            .map(|(i, city)| (i, sift3(city, term)))
+            // .map(|(i, city)| (i, sift3(city, term)))
+            .map(|(i, _)| (i, self.total_score(term, i, location)))
             .filter(|(_, score)| score < &1.4)
             .collect();
 
