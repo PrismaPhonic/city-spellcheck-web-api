@@ -55,6 +55,14 @@ pub struct Coordinate {
     longitude: f32,
 }
 
+impl Coordinate {
+    pub fn new(latitude: f32, longitude: f32) -> Coordinate {
+        Coordinate {
+            latitude, longitude
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FuzzyResult {
     city: String,
