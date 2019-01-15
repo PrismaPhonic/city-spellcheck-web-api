@@ -132,18 +132,28 @@ impl CityData {
     /// `total_score` takes into account location as well as 
     /// string distance using Levenshtein algorithm
     fn total_score(&self, term: &str, idx: usize, loc: Option<Coordinate>) -> f32 {
-        let city = self.names[idx];
-        let str_dist = damerau_levenshtein(&city, term);
+        let city = &self.names[idx];
+        let latitude = self.latitudes[idx];
+        let longitude = self.longitudes[idx];
+        let city_loc = Coordinate { latitude, longitude };
 
-        
-        
+        let str_dist = damerau_levenshtein(&city, term) as f32;
+        let str_score = term.len() as f32 / (term.len() as f32 - str_dist);
+        let mut dist_score = str_score;
+
+        if let Some(loc2) = loc {
+            let phys_dist = CityData::find_distance_earth(city_loc, loc2);
+            dist_score = CityData::dist_score(phys_dist);
+        };
+
+        (str_score + dist_score) / 2.0
     }
 
     /// Finds circular distance from two gps coordinates using haversine formula
     fn find_distance_earth(loc1: Coordinate, loc2: Coordinate) -> f32 {
-        let R: f32 = 6372.8;
-        let Coordinate { latitude: lat1, longitude: long1 } = loc1;
-        let Coordinate { latitude: lat2, longitude: long2 } = loc2;
+        const R: f32 = 6372.8;
+        let Coordinate { latitude: mut lat1, longitude: mut long1 } = loc1;
+        let Coordinate { latitude: mut lat2, longitude: long2 } = loc2;
         long1 -= long2;
         long1 = long1.to_radians();
         lat1 = lat1.to_radians();
@@ -154,11 +164,10 @@ impl CityData {
         ((dx * dx + dy * dy + dz * dz).sqrt() / 2.0).asin() * 2.0 * R
     }
 
+    /// Distance Score - if less than 500 kilometers a score of 1.0 (perfect) or
+    /// increasinly smaller score from 500 up
     fn dist_score(dist: f32) -> f32 {
-        match dist {
-            1..100 => 0,
-            _ => dist * 
-        }
+        if dist < 500.0 { 1.0 } else { 500.0 / (dist - 499.0) }
     }
 
     pub fn search(&self, term: &str, loc: Option<Coordinate>) -> Vec<FuzzyResult> {

@@ -11,7 +11,7 @@ use rocket_contrib::json::{Json, JsonValue};
 fn suggestions(query: &RawStr) -> JsonValue {
     let mut cities = CityData::new();
     cities.populate_from_file("data/cities_canada-usa-filtered.csv").unwrap();
-    let results = cities.search(query);
+    let results = cities.search(query, None);
     
     json!(results)
 }
