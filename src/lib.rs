@@ -12,16 +12,11 @@ extern crate serde_derive;
 
 use std::error::Error;
 use std::fs;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::{BufRead, BufReader, Write};
 
 use std::cmp::Ordering;
 
 use distance::*;
 use rayon::prelude::*;
-
-use sublime_fuzzy::*;
 
 /// Data-Oriented Design approach
 /// Struct of Arrays (SoA)
@@ -248,7 +243,7 @@ mod tests {
     #[test]
     fn test_populate_from_file() {
         let mut cities = CityData::new();
-        cities.populate_from_file("data/cities_canada-usa-filtered.csv");
+        cities.populate_from_file("data/cities_canada-usa-filtered.csv").unwrap();
         assert_eq!(format!("{:?}", cities.get_city(0)), "City { name: \"Abbotsford\", country: \"CA\", region: \"02\", latitude: 49.05798, longitude: -122.25257 }");
     }
 
@@ -273,14 +268,14 @@ mod tests {
     #[test]
     fn test_total_score_no_gps() {
         let mut cities = CityData::new();
-        cities.populate_from_file("data/cities_canada-usa-filtered.csv");
+        cities.populate_from_file("data/cities_canada-usa-filtered.csv").unwrap();
         assert_eq!(cities.total_score("Abbotsfor", 0, None), 0.88888896);
     }
 
     #[test]
     fn test_search_with_gps() {
         let mut cities = CityData::new();
-        cities.populate_from_file("data/cities_canada-usa-filtered.csv");
+        cities.populate_from_file("data/cities_canada-usa-filtered.csv").unwrap();
         let london = Coordinate { latitude: 42.98339, longitude: -81.23304 };
         let results = cities.search("London", Some(london));
         assert_eq!(format!("{:?}", results), "[FuzzyResult { city: \"London, 08, CA\", latitude: 42.98339, longitude: -81.23304, score: 1.0 }, FuzzyResult { city: \"London, OH, US\", latitude: 39.88645, longitude: -83.44825, score: 1.0 }, FuzzyResult { city: \"Logan, OH, US\", latitude: 39.54007, longitude: -82.4071, score: 0.6875 }]");

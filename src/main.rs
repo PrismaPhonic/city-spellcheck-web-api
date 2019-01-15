@@ -11,7 +11,7 @@ extern crate lazy_static;
 
 use city_spellcheck::*;
 use rocket::http::RawStr;
-use rocket_contrib::json::{Json, JsonValue};
+use rocket_contrib::json::JsonValue;
 
 // pre-load cities data so we don't do it on every request to suggestions route
 lazy_static! {
@@ -35,7 +35,7 @@ fn suggestions(q: &RawStr, latitude: Option<f32>, longitude: Option<f32>) -> Jso
             return json!("If you supply latitude you must also supply longitude!")
         }
     } else {
-        if let Some(long) = longitude {
+        if let Some(_) = longitude {
             return json!("If you supply longitude you must also supply latitude!")
         }
     }
