@@ -16,6 +16,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader, Write};
 
+use std::cmp::Ordering;
+
 use distance::*;
 use rayon::prelude::*;
 
@@ -157,7 +159,7 @@ impl CityData {
             dist_score = CityData::dist_score(phys_dist);
         };
 
-        (str_score + dist_score) / 2.0
+        (str_score * 5.0 + dist_score * 3.0) / 8.0
     }
 
     /// Finds circular distance from two gps coordinates using haversine formula
@@ -184,10 +186,10 @@ impl CityData {
     /// Distance Score - if less than 500 kilometers a score of 1.0 (perfect) or
     /// increasingly smaller score from 500 up
     fn dist_score(dist: f32) -> f32 {
-        if dist < 500.0 {
+        if dist < 400.0 {
             1.0
         } else {
-            500.0 / (dist.powf(2.0) - 499.0)
+            400.0 / (dist.powf(2.0) - (399.9 as f32).powf(2.0))
         }
     }
 
@@ -195,14 +197,16 @@ impl CityData {
         let mut results = vec![];
 
         let location = loc.clone();
-        let found: Vec<(usize, f32)> = self
+        let mut found: Vec<(usize, f32)> = self
             .names
             .par_iter()
             .enumerate()
             // .map(|(i, city)| (i, sift3(city, term)))
             .map(|(i, _)| (i, self.total_score(term, i, location)))
-            .filter(|(_, score)| score > &0.7)
+            .filter(|(_, score)| score > &0.65)
             .collect();
+
+        found.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
 
         for result in found {
             let (i, score) = result;
@@ -255,22 +259,14 @@ mod tests {
 
     #[test]
     fn test_dist_score() {
-        assert_eq!(CityData::dist_score(4135.694), 0.000029233845);
+        assert_eq!(CityData::dist_score(4135.694), 0.000023607116);
     }
 
     #[test]
     fn test_total_score_no_gps() {
         let mut cities = CityData::new();
         cities.populate_from_file("data/cities_canada-usa-filtered.csv");
-        assert_eq!(cities.total_score("Abbotsfor", 0, None), 0.8888889);
-    }
-
-    #[test]
-    fn test_search_no_gps() {
-        let mut cities = CityData::new();
-        cities.populate_from_file("data/cities_canada-usa-filtered.csv");
-        let results = cities.search("London", None);
-        assert_eq!(format!("{:?}", results), "[FuzzyResult { city: \"London, 08, CA\", latitude: 42.98339, longitude: -81.23304, score: 1.0 }, FuzzyResult { city: \"London, KY, US\", latitude: 37.12898, longitude: -84.08326, score: 1.0 }, FuzzyResult { city: \"Lyndon, KY, US\", latitude: 38.25674, longitude: -85.60163, score: 0.8333333 }, FuzzyResult { city: \"London, OH, US\", latitude: 39.88645, longitude: -83.44825, score: 1.0 }, FuzzyResult { city: \"Loudon, TN, US\", latitude: 35.73285, longitude: -84.33381, score: 0.8333333 }, FuzzyResult { city: \"Lyndon, VT, US\", latitude: 44.51422, longitude: -72.01093, score: 0.8333333 }, FuzzyResult { city: \"Lindon, UT, US\", latitude: 40.34329, longitude: -111.72076, score: 0.8333333 }]");
+        assert_eq!(cities.total_score("Abbotsfor", 0, None), 0.88888896);
     }
 
     #[test]
@@ -279,6 +275,6 @@ mod tests {
         cities.populate_from_file("data/cities_canada-usa-filtered.csv");
         let london = Coordinate { latitude: 42.98339, longitude: -81.23304 };
         let results = cities.search("London", Some(london));
-        assert_eq!(format!("{:?}", results), "[FuzzyResult { city: \"London, 08, CA\", latitude: 42.98339, longitude: -81.23304, score: 1.0 }, FuzzyResult { city: \"Landen, OH, US\", latitude: 39.312, longitude: -84.28299, score: 0.8333334 }, FuzzyResult { city: \"Logan, OH, US\", latitude: 39.54007, longitude: -82.4071, score: 0.75 }, FuzzyResult { city: \"London, OH, US\", latitude: 39.88645, longitude: -83.44825, score: 1.0 }, FuzzyResult { city: \"Monroe, OH, US\", latitude: 39.44034, longitude: -84.36216, score: 0.75 }, FuzzyResult { city: \"Union, OH, US\", latitude: 39.89783, longitude: -84.30633, score: 0.75 }]");
+        assert_eq!(format!("{:?}", results), "[FuzzyResult { city: \"London, 08, CA\", latitude: 42.98339, longitude: -81.23304, score: 1.0 }, FuzzyResult { city: \"London, OH, US\", latitude: 39.88645, longitude: -83.44825, score: 1.0 }, FuzzyResult { city: \"Logan, OH, US\", latitude: 39.54007, longitude: -82.4071, score: 0.6875 }]");
     }
 }
