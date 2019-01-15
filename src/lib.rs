@@ -1,13 +1,14 @@
+extern crate distance;
 /**
  * TODOS:
  * 1. Add enum for Region - states and provinces
 */
 extern crate rayon;
-extern crate distance;
 
 extern crate sublime_fuzzy;
 
-#[macro_use] extern crate serde_derive;
+#[macro_use]
+extern crate serde_derive;
 
 use std::error::Error;
 use std::fs;
@@ -15,8 +16,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader, Write};
 
-use rayon::prelude::*;
 use distance::*;
+use rayon::prelude::*;
 
 use sublime_fuzzy::*;
 
@@ -129,16 +130,26 @@ impl CityData {
         }
     }
 
-    /// `total_score` takes into account location as well as 
+    /// `total_score` takes into account location as well as
     /// string distance using Levenshtein algorithm
     fn total_score(&self, term: &str, idx: usize, loc: Option<Coordinate>) -> f32 {
         let city = &self.names[idx];
         let latitude = self.latitudes[idx];
         let longitude = self.longitudes[idx];
-        let city_loc = Coordinate { latitude, longitude };
+        let city_loc = Coordinate {
+            latitude,
+            longitude,
+        };
 
-        let str_dist = damerau_levenshtein(&city, term) as f32;
-        let str_score = term.len() as f32 / (term.len() as f32 - str_dist);
+        let str_dist = damerau_levenshtein(city, term) as f32;
+        let str_score = if str_dist >= term.len() as f32 {
+            0.0
+        } else {
+            (term.len() as f32 - str_dist) / term.len() as f32
+        }; 
+
+        if str_score == 0.0 { return 0.0 }; 
+
         let mut dist_score = str_score;
 
         if let Some(loc2) = loc {
@@ -152,8 +163,14 @@ impl CityData {
     /// Finds circular distance from two gps coordinates using haversine formula
     fn find_distance_earth(loc1: Coordinate, loc2: Coordinate) -> f32 {
         const R: f32 = 6372.8;
-        let Coordinate { latitude: mut lat1, longitude: mut long1 } = loc1;
-        let Coordinate { latitude: mut lat2, longitude: long2 } = loc2;
+        let Coordinate {
+            latitude: mut lat1,
+            longitude: mut long1,
+        } = loc1;
+        let Coordinate {
+            latitude: mut lat2,
+            longitude: long2,
+        } = loc2;
         long1 -= long2;
         long1 = long1.to_radians();
         lat1 = lat1.to_radians();
@@ -165,9 +182,13 @@ impl CityData {
     }
 
     /// Distance Score - if less than 500 kilometers a score of 1.0 (perfect) or
-    /// increasinly smaller score from 500 up
+    /// increasingly smaller score from 500 up
     fn dist_score(dist: f32) -> f32 {
-        if dist < 500.0 { 1.0 } else { 500.0 / (dist - 499.0) }
+        if dist < 500.0 {
+            1.0
+        } else {
+            500.0 / (dist - 499.0)
+        }
     }
 
     pub fn search(&self, term: &str, loc: Option<Coordinate>) -> Vec<FuzzyResult> {
@@ -180,7 +201,7 @@ impl CityData {
             .enumerate()
             // .map(|(i, city)| (i, sift3(city, term)))
             .map(|(i, _)| (i, self.total_score(term, i, location)))
-            .filter(|(_, score)| score < &1.4)
+            .filter(|(_, score)| score > &0.7)
             .collect();
 
         for result in found {
@@ -219,12 +240,36 @@ mod tests {
         assert_eq!(format!("{:?}", cities.get_city(0)), "City { name: \"Abbotsford\", country: \"CA\", region: \"02\", latitude: 49.05798, longitude: -122.25257 }");
     }
 
+
+    #[test]
+    fn test_str_dist() {
+        assert_eq!(damerau_levenshtein("Londo", "London"), 1);
+    }
+
+    #[test]
+    fn test_phys_dist() {
+        let sf = Coordinate { latitude: 37.774929, longitude: -122.419416 };
+        let nyc = Coordinate { latitude: 40.730610, longitude: -73.935242 };
+        assert_eq!(CityData::find_distance_earth(sf, nyc), 4135.694);
+    }
+
+    #[test]
+    fn test_dist_score() {
+        assert_eq!(CityData::dist_score(4135.694), 0.13748752);
+    }
+
+    #[test]
+    fn test_total_score_no_gps() {
+        let mut cities = CityData::new();
+        cities.populate_from_file("data/cities_canada-usa-filtered.csv");
+        assert_eq!(cities.total_score("Abbotsfor", 0, None), 0.9);
+    }
+
     #[test]
     fn test_search() {
         let mut cities = CityData::new();
         cities.populate_from_file("data/cities_canada-usa-filtered.csv");
-        let results = cities.search("London");
+        let results = cities.search("London", None);
         assert_eq!(format!("{:?}", results), "[FuzzyResult { city: \"London, 08, CA\", latitude: 42.98339, longitude: -81.23304, score: 0.0 }, FuzzyResult { city: \"London, KY, US\", latitude: 37.12898, longitude: -84.08326, score: 0.0 }, FuzzyResult { city: \"London, OH, US\", latitude: 39.88645, longitude: -83.44825, score: 0.0 }]");
     }
-
 }
