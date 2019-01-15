@@ -10,14 +10,22 @@ use rocket::http::RawStr;
 use rocket_contrib::json::{Json, JsonValue};
 
 #[get("/suggestions?<q>&<latitude>&<longitude>")]
-fn suggestions(q: &RawStr, latitude: f32, longitude: f32) -> JsonValue {
+fn suggestions(q: &RawStr, latitude: Option<f32>, longitude: Option<f32>) -> JsonValue {
     let mut cities = CityData::new();
     cities
         .populate_from_file("data/cities_canada-usa-filtered.csv")
         .unwrap();
     
-    let coords = Coordinate::new(latitude, longitude);
-    let results = cities.search(q, Some(coords));
+    let mut coords = None;
+
+    if let Some(lat) = latitude {
+        if let Some(long) = longitude {
+            coords = Some(Coordinate::new(lat, long));
+        } else {
+            return json!("If you supply latitude you must also supply longitude")
+        }
+    }
+    let results = cities.search(q, coords);
     json!(results)
 }
 
