@@ -13,14 +13,13 @@ use city_spellcheck::*;
 use rocket::http::RawStr;
 use rocket_contrib::json::JsonValue;
 
-// pre-load cities data so we don't do it on every request to suggestions route
 lazy_static! {
     static ref CITIES: CityData = {
-        let mut cities = CityData::new();
-        cities
-            .populate_from_file("data/cities_canada-usa-filtered.csv")
-            .unwrap();
-        cities
+		let mut cities = CityData::new();
+		cities
+			.populate_from_file("data/cities_canada-usa-filtered.csv")
+			.unwrap();
+		cities
     };
 }
 
@@ -39,10 +38,14 @@ fn suggestions(q: &RawStr, latitude: Option<f32>, longitude: Option<f32>) -> Jso
             return json!("If you supply longitude you must also supply latitude!")
         }
     }
+
     let results = CITIES.search(q, coords);
+
     json!(results)
 }
 
 fn main() {
+    // kicking off static lazy so it's pre-loaded before suggestions route
+	let _ = CITIES.get_city(0);
     rocket::ignite().mount("/", routes![suggestions]).launch();
 }

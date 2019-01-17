@@ -1,5 +1,5 @@
 [package]
-name = "city-spellcheck"
+name = "city-spellcheck-api"
 version = "0.1.0"
 authors = ["Peter Farr <Peter@PrismaPhonic.com>"]
 edition = "2018"
@@ -10,8 +10,8 @@ distance = "0.4.0"
 rocket = "0.4.0"
 serde_derive = "1.0.84"
 serde = "1.0.84"
-sublime_fuzzy = "0.6.0"
 lazy_static = "1.2.0"
+city-spellcheck = { path="../city-spellcheck"  }
 
 [dependencies.rocket_contrib]
 version = "0.4.0"
