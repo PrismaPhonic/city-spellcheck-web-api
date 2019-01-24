@@ -11,7 +11,7 @@ rocket = "0.4.0"
 serde_derive = "1.0.84"
 serde = "1.0.84"
 lazy_static = "1.2.0"
-city-spellcheck = { path="../city-spellcheck"  }
+city-spellcheck = "0.1.1"
 
 [dependencies.rocket_contrib]
 version = "0.4.0"
