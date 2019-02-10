@@ -9,8 +9,13 @@ extern crate rocket_contrib;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate serde_derive;
+
 use city_spellcheck::*;
 use rocket::http::RawStr;
+use rocket::http::Status;
+use rocket::response::status;
 use rocket_contrib::json::JsonValue;
 
 lazy_static! {
@@ -23,25 +28,44 @@ lazy_static! {
     };
 }
 
+#[derive(Serialize, Deserialize)]
+struct CustomError {
+    error: &'static str,
+}
+
 #[get("/suggestions?<q>&<latitude>&<longitude>")]
-fn suggestions(q: &RawStr, latitude: Option<f32>, longitude: Option<f32>) -> JsonValue {
+fn suggestions(
+    q: &RawStr,
+    latitude: Option<f32>,
+    longitude: Option<f32>,
+) -> Result<JsonValue, status::Custom<JsonValue>> {
     let mut coords = None;
 
     if let Some(lat) = latitude {
         if let Some(long) = longitude {
             coords = Some(Coordinate::new(lat, long));
         } else {
-            return json!("If you supply latitude you must also supply longitude!");
+            let custom_error = CustomError {
+                error: "If you supply latitude you must also supply longitude!",
+            };
+            let response = status::Custom(Status::UnprocessableEntity, json!(custom_error));
+
+            return Err(response);
         }
     } else {
         if let Some(_) = longitude {
-            return json!("If you supply longitude you must also supply latitude!");
+            let custom_error = CustomError {
+                error: "If you supply longitude you must also supply latitude!",
+            };
+            let response = status::Custom(Status::UnprocessableEntity, json!(custom_error));
+
+            return Err(response);
         }
     }
 
     let results = CITIES.search(q, coords);
 
-    json!(results)
+    Ok(json!(results))
 }
 
 fn main() {
