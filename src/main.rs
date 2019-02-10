@@ -15,11 +15,11 @@ use rocket_contrib::json::JsonValue;
 
 lazy_static! {
     static ref CITIES: CityData = {
-		let mut cities = CityData::new();
-		cities
-			.populate_from_file("data/cities_canada-usa-filtered.csv")
-			.unwrap();
-		cities
+        let mut cities = CityData::new();
+        cities
+            .populate_from_file("data/cities_canada-usa-filtered.csv")
+            .unwrap();
+        cities
     };
 }
 
@@ -31,11 +31,11 @@ fn suggestions(q: &RawStr, latitude: Option<f32>, longitude: Option<f32>) -> Jso
         if let Some(long) = longitude {
             coords = Some(Coordinate::new(lat, long));
         } else {
-            return json!("If you supply latitude you must also supply longitude!")
+            return json!("If you supply latitude you must also supply longitude!");
         }
     } else {
         if let Some(_) = longitude {
-            return json!("If you supply longitude you must also supply latitude!")
+            return json!("If you supply longitude you must also supply latitude!");
         }
     }
 
@@ -46,6 +46,6 @@ fn suggestions(q: &RawStr, latitude: Option<f32>, longitude: Option<f32>) -> Jso
 
 fn main() {
     // kicking off static lazy so it's pre-loaded before suggestions route
-	let _ = CITIES.get_city(0);
+    let _ = CITIES.get_city(0);
     rocket::ignite().mount("/", routes![suggestions]).launch();
 }
