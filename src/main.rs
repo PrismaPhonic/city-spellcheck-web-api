@@ -7,26 +7,14 @@ extern crate rocket;
 extern crate rocket_contrib;
 
 #[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
 extern crate serde_derive;
 
 use city_spellcheck::*;
 use rocket::http::RawStr;
 use rocket::http::Status;
 use rocket::response::status;
+use rocket::State;
 use rocket_contrib::json::JsonValue;
-
-lazy_static! {
-    static ref CITIES: CityData = {
-        let mut cities = CityData::new();
-        cities
-            .populate_from_file("data/cities_canada-usa-filtered.csv")
-            .unwrap();
-        cities
-    };
-}
 
 #[derive(Serialize, Deserialize)]
 struct CustomError {
@@ -38,6 +26,7 @@ fn suggestions(
     q: &RawStr,
     latitude: Option<f32>,
     longitude: Option<f32>,
+    state: State<CityData>,
 ) -> Result<JsonValue, status::Custom<JsonValue>> {
     let mut coords = None;
 
@@ -63,13 +52,18 @@ fn suggestions(
         }
     }
 
-    let results = CITIES.search(q, coords);
+    let results = state.search(q, coords);
 
     Ok(json!(results))
 }
 
 fn main() {
-    // kicking off static lazy so it's pre-loaded before suggestions route
-    let _ = CITIES.get_city(0);
-    rocket::ignite().mount("/", routes![suggestions]).launch();
+    let mut cities = CityData::new();
+    cities
+        .populate_from_file("data/cities_canada-usa-filtered.csv")
+        .unwrap();
+    rocket::ignite()
+        .mount("/", routes![suggestions])
+        .manage(cities)
+        .launch();
 }
